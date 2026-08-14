@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Upload Labels{% endblock %}
+{% block page_title %}Upload Labels{% endblock %}
+{% block topbar_actions %}
+<a href="{{ url_for('page_review') }}" class="btn btn-primary btn-sm">📝 Review Extracted Orders</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:20px">
+  <div class="dropzone" id="dropzone">
+    <div class="icon">📤</div>
+    <h3>Upload Your Order Labels</h3>
+    <p>Upload marketplace labels / order files. SellerPilot extracts what the document actually contains.</p>
+    <div class="file-types">
+      <span class="file-type-chip">PDF</span>
+      <span class="file-type-chip">PNG / JPG*</span>
+      <span class="file-type-chip">JPG / JPEG</span>
+      <span class="file-type-chip">Excel</span>
+      <span class="file-type-chip">CSV</span>
+    </div>
+    <input type="file" id="fileInput" multiple hidden accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.csv">
+    <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">Choose Files</button>
+    <button class="btn btn-primary" id="uploadBtn" style="margin-left:8px" disabled>Upload</button>
+  </div>
+
+  <div id="progressWrap" style="display:none;margin-top:20px">
+    <div class="progress-status" id="progressStatus">Uploading...</div>
+    <div class="progress-line"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+
+  <div id="selectedFiles" style="margin-top:14px;font-size:13px;color:var(--text-600)"></div><div class="small-note">* Image OCR requires Tesseract in production. PDF, XLSX and CSV extraction work directly in this demo.</div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Uploaded Files</h3>
+    <span class="sub">Recent uploads</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>File</th><th>Status</th><th>Orders Found</th><th>Action</th></tr></thead>
+      <tbody id="uploadsTbody"><tr><td colspan="4" class="empty-state">No files uploaded yet</td></tr></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selected = [];
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const uploadBtn = document.getElementById('uploadBtn');
+
+['dragover','dragenter'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('dragover'); }));
+['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('dragover'); }));
+dropzone.addEventListener('drop', e => { handleFiles(e.dataTransfer.files); });
+dropzone.addEventListener('click', (e) => { if (e.target.tagName !== 'BUTTON') fileInput.click(); });
+fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+function handleFiles(fileList){
+  selected = Array.from(fileList);
+  document.getElementById('selectedFiles').textContent = selected.length
+    ? `${selected.length} file(s) selected: ${selected.map(f=>f.name).join(', ')}` : '';
+  uploadBtn.disabled = selected.length === 0;
+}
+
+uploadBtn.addEventListener('click', async () => {
+  if (!selected.length) return;
+  uploadBtn.disabled = true;
+  const progressWrap = document.getElementById('progressWrap');
+  const fill = document.getElementById('progressFill');
+  const status = document.getElementById('progressStatus');
+  progressWrap.style.display = 'block';
+
+  const steps = ['Uploading...', 'Reading the document...', 'Extracting order information...', 'Preparing review rows...'];
+  let pct = 0;
+  const timer = setInterval(() => {
+    pct = Math.min(pct + 12, 92);
+    fill.style.width = pct + '%';
+    status.textContent = steps[Math.min(Math.floor(pct/25), steps.length-1)];
+  }, 150);
+
+  const fd = new FormData();
+  selected.forEach(f => fd.append('files', f));
+
+  const res = await fetch('/api/upload', { method: 'POST', body: fd });
+  const data = await res.json();
+
+  clearInterval(timer);
+  fill.style.width = '100%';
+  status.textContent = 'Done';
+
+  setTimeout(() => {
+    progressWrap.style.display = 'none';
+    fill.style.width = '0%';
+  }, 700);
+
+  if (data.ok) {
+    toast(`Processed ${data.results.length} file(s), found ${data.results.reduce((s,r)=>s+(r.orders_found||0),0)} order(s).`);
+    selected = [];
+    document.getElementById('selectedFiles').textContent = '';
+    fileInput.value = '';
+    loadUploads();
+  } else {
+    toast(data.error || 'Upload failed.', 'error'); if(data.upgrade_url){ setTimeout(()=>location.href=data.upgrade_url,900); }
+  }
+  uploadBtn.disabled = true;
+});
+
+function statusBadge(status){
+  if (status === 'Processed') return '<span class="badge badge-success">✓ Processed</span>';
+  if (status === 'Failed') return '<span class="badge badge-danger">✕ Failed</span>';
+  return '<span class="badge badge-warning">⏳ Processing</span>';
+}
+
+async function loadUploads(){
+  const uploads = await api('/api/uploads');
+  const tbody = document.getElementById('uploadsTbody');
+  if (!uploads.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No files uploaded yet</td></tr>'; return; }
+  tbody.innerHTML = uploads.map(u => `
+    <tr>
+      <td>${u.file}</td>
+      <td>${statusBadge(u.status)}</td>
+      <td>${u.orders_found ?? '—'}</td>
+      <td><a href="{{ url_for('page_review') }}" class="btn btn-ghost btn-sm">View</a></td>
+    </tr>`).join('');
+}
+
+loadUploads();
+</script>
+{% endblock %}

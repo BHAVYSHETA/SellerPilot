@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log in · SellerPilot</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="brand" style="margin-bottom:22px"><img class="brand-logo" src="{{ url_for('static', filename='images/sellerpilot-logo.png') }}" alt="SellerPilot logo"> <span>SellerPilot</span></div>
+    <h1 id="formTitle">Welcome back</h1>
+    <p class="hint" id="formHint">Log in to your seller dashboard.</p>
+
+    <div class="auth-error" id="authError"></div>
+
+    <form id="authForm">
+      <div class="field">
+        <label>Email address</label>
+        <input type="email" id="email" value="{{ demo_email }}" required>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="password" value="{{ demo_password }}" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Log in</button>
+    </form>
+
+    <div class="auth-divider">or</div>
+    <button class="btn btn-accent btn-block" id="oneClickDemo">⚡ One-Click Demo Login</button>
+
+    <div class="demo-box">
+      <strong>Demo credentials</strong><br>
+      Email: <code>{{ demo_email }}</code><br>
+      Password: <code>{{ demo_password }}</code>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script>
+document.getElementById('authForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const res = await api('/api/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+  const err = document.getElementById('authError');
+  if (res.ok) {
+    window.location.href = res.redirect;
+  } else {
+    err.textContent = res.error || 'Login failed.';
+    err.style.display = 'block';
+  }
+});
+
+document.getElementById('oneClickDemo').addEventListener('click', async () => {
+  const res = await api('/api/demo-login', { method: 'POST' });
+  if (res.ok) window.location.href = res.redirect;
+});
+</script>
+</body>
+</html>

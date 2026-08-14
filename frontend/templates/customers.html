@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Customers{% endblock %}
+{% block page_title %}Customers{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div class="search"><span class="icon">🔍</span><input id="searchInput" placeholder="Search customers..." oninput="renderCustomers()"></div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h3>All Customers</h3><span class="sub" id="custCount">0 customers</span></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Customer</th><th>City</th><th>State</th><th>Orders</th><th>Total Revenue</th>
+        <th>Total Profit</th><th>Last Order</th><th></th>
+      </tr></thead>
+      <tbody id="custTbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="custModal">
+  <div class="modal" style="max-width:600px">
+    <h3 id="custModalTitle">Customer</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Order</th><th>Date</th><th>Product</th><th>Revenue</th><th>Profit</th></tr></thead>
+        <tbody id="custOrdersTbody"></tbody>
+      </table>
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('custModal')">Close</button></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let customers = [];
+
+async function loadCustomers(){
+  customers = await api('/api/customers');
+  renderCustomers();
+}
+
+function renderCustomers(){
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = customers.filter(c => !q || c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q));
+  document.getElementById('custCount').textContent = `${customers.length} customers`;
+  const tbody = document.getElementById('custTbody');
+  if (!filtered.length){ tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No customers found</td></tr>`; return; }
+  tbody.innerHTML = filtered
+    .sort((a,b) => b.total_revenue - a.total_revenue)
+    .map(c => `
+    <tr>
+      <td>${c.name}</td>
+      <td>${c.city}</td>
+      <td>${c.state}</td>
+      <td>${c.order_count}</td>
+      <td>${formatINR(c.total_revenue)}</td>
+      <td class="${c.total_profit>=0?'text-success':'text-danger'}">${formatINR(c.total_profit)}</td>
+      <td>${c.last_order_date || '—'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="viewCustomer('${c.id}')">View</button></td>
+    </tr>`).join('');
+}
+
+async function viewCustomer(id){
+  const data = await api(`/api/customers/${id}`);
+  if (!data.customer) return;
+  document.getElementById('custModalTitle').textContent = `${data.customer.name} — Order History`;
+  const tbody = document.getElementById('custOrdersTbody');
+  tbody.innerHTML = data.orders.length ? data.orders.map(o => `
+    <tr><td>${o.id}</td><td>${o.date}</td><td>${o.product_name}</td>
+    <td>${formatINR(o.revenue)}</td><td class="${o.profit>=0?'text-success':'text-danger'}">${formatINR(o.profit)}</td></tr>
+  `).join('') : `<tr><td colspan="5" class="empty-state">No orders yet</td></tr>`;
+  openModal('custModal');
+}
+
+loadCustomers();
+</script>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+{% block content %}
+<div class="chart-grid-2">
+  <div class="card"><div class="card-head"><h3>Top Products by Revenue</h3></div><div class="chart-box"><canvas id="topRevenue"></canvas></div></div>
+  <div class="card"><div class="card-head"><h3>Top Products by Profit</h3></div><div class="chart-box"><canvas id="topProfit"></canvas></div></div>
+</div>
+<div class="chart-grid-2">
+  <div class="card"><div class="card-head"><h3>Loss-Making Products</h3></div><div class="table-wrap"><table><thead><tr><th>Product</th><th>Revenue</th><th>Loss</th><th>Units</th></tr></thead><tbody id="lossBody"></tbody></table></div></div>
+  <div class="card"><div class="card-head"><h3>Business Insights</h3></div><div id="insights" class="insight-panel"></div></div>
+</div>
+<div class="card">
+  <div class="card-head"><h3>Top Customers</h3></div>
+  <div class="table-wrap"><table><thead><tr><th>Customer</th><th>City</th><th>Orders</th><th>Revenue</th><th>Profit</th></tr></thead><tbody id="customerBody"></tbody></table></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function loadAnalytics(){
+  const d=await api('/api/analytics');
+  new Chart(document.getElementById('topRevenue'),{type:'bar',data:{labels:d.top_by_revenue.map(x=>x.name),datasets:[{data:d.top_by_revenue.map(x=>x.revenue),backgroundColor:'#4f5fd6',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}}}});
+  new Chart(document.getElementById('topProfit'),{type:'bar',data:{labels:d.top_by_profit.map(x=>x.name),datasets:[{data:d.top_by_profit.map(x=>x.profit),backgroundColor:'#1e8449',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}}}});
+  document.getElementById('lossBody').innerHTML=d.loss_making.length?d.loss_making.map(x=>`<tr><td>${x.name}</td><td>${formatINR(x.revenue)}</td><td class="text-danger">${formatINR(x.profit)}</td><td>${x.quantity}</td></tr>`).join(''):`<tr><td colspan="4" class="empty-state">No loss-making products 🎉</td></tr>`;
+  document.getElementById('insights').innerHTML=d.insights.map((x,i)=>`<div class="insight-item"><div class="insight-icon">${i+1}</div><div>${x}</div></div>`).join('');
+  document.getElementById('customerBody').innerHTML=d.best_customers.map(c=>`<tr><td>${c.name}</td><td>${c.city}</td><td>${c.order_count}</td><td>${formatINR(c.total_revenue)}</td><td class="${c.total_profit>=0?'text-success':'text-danger'}">${formatINR(c.total_profit)}</td></tr>`).join('');
+}
+loadAnalytics();
+</script>
+{% endblock %}

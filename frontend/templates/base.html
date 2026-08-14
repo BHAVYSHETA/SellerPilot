@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Dashboard{% endblock %} · SellerPilot</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><img class="brand-logo" src="{{ url_for('static', filename='images/sellerpilot-logo.png') }}" alt="SellerPilot logo"> <span>SellerPilot</span></div>
+    <ul class="nav-list">
+      <li><a href="{{ url_for('page_dashboard') }}" class="{{ 'active' if active=='dashboard' }}"><span class="nav-icon">📊</span> Dashboard</a></li>
+      <li><a href="{{ url_for('page_upload') }}" class="{{ 'active' if active=='upload' }}"><span class="nav-icon">📤</span> Upload Labels</a></li>
+      <li><a href="{{ url_for('page_orders') }}" class="{{ 'active' if active=='orders' }}"><span class="nav-icon">🧾</span> Orders</a></li>
+      <li><a href="{{ url_for('page_products') }}" class="{{ 'active' if active=='products' }}"><span class="nav-icon">📦</span> Products</a></li>
+      <li><a href="{{ url_for('page_financials') }}" class="{{ 'active' if active=='financials' }}"><span class="nav-icon">💰</span> Financials</a></li>
+      <li><a href="{{ url_for('page_analytics') }}" class="{{ 'active' if active=='analytics' }}"><span class="nav-icon">📈</span> Analytics</a></li>
+      <li><a href="{{ url_for('page_reports') }}" class="{{ 'active' if active=='reports' }}"><span class="nav-icon">📑</span> Excel Reports</a></li>
+      <li><a href="{{ url_for('pricing_page') }}"><span class="nav-icon">✦</span> Premium</a></li>
+      <li><a href="{{ url_for('page_settings') }}" class="{{ 'active' if active=='settings' }}"><span class="nav-icon">⚙️</span> Settings</a></li>
+    </ul>
+    <div class="sidebar-footer">
+      <div class="demo-account">
+        <div class="demo-avatar">SP</div>
+        <div>
+          <div style="font-weight:600;color:#fff">{{ "Premium" if session.get("plan") in ["premium_monthly","premium_yearly"] else "Free Demo" }}</div>
+          <div style="font-size:11.5px;color:#9aa4c4">demo@example.com</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-block" style="color:#b9c2dd" onclick="logout()">↩ Logout</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+      </div>
+      <div class="actions">
+        {% block topbar_actions %}{% endblock %}
+        <button class="btn btn-outline btn-sm" onclick="togglePresentation()">🚀 Presentation Mode</button>
+      </div>
+    </div>
+    <div class="content">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
+<!-- Seller Assistant -->
+<div class="assistant-widget" id="assistantWidget">
+  <div class="assistant-panel" id="assistantPanel">
+    <div class="assistant-header">
+      <div class="title">🤖 Seller Assistant</div>
+      <div style="font-size:11.5px;color:#c8d0e6;margin-top:2px">Ask about your business data</div>
+    </div>
+    <div class="assistant-body" id="assistantBody"></div>
+    <div class="assistant-suggestions" id="assistantSuggestions"></div>
+    <div class="assistant-input">
+      <input type="text" id="assistantInput" placeholder="Ask a question...">
+      <button id="assistantSendBtn">➤</button>
+    </div>
+  </div>
+  <button class="assistant-fab" id="assistantFab">💬</button>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+<div class="toast-stack"></div>
+</body>
+</html>

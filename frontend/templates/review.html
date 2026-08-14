@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Review Orders{% endblock %}
+{% block page_title %}Review Orders{% endblock %}
+{% block topbar_actions %}
+<button class="btn btn-outline btn-sm" onclick="addRow()">+ Add Row</button>
+<button class="btn btn-primary btn-sm" onclick="saveAll()">✓ Calculate & Save All</button>
+{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div class="search"><span class="icon">🔍</span><input id="searchInput" placeholder="Search product or customer..." oninput="renderTable()"></div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Extracted Order Data</h3>
+    <span class="sub" id="rowCount">0 rows pending review</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Order</th><th>Product</th><th>SKU</th><th>Customer</th><th>City</th><th>Qty</th>
+        <th>Selling Price</th><th>Product Cost</th><th>Settlement</th><th>Status</th><th>Shipping</th><th>Tax</th><th>Platform Fee</th>
+        <th>Total Cost</th><th>Profit</th><th>Margin</th><th>Actions</th>
+      </tr></thead>
+      <tbody id="reviewTbody"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let rows = [];
+
+async function loadReview(){
+  rows = await api('/api/review');
+  renderTable();
+}
+
+function renderTable(){
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = rows.filter(r => !q || r.product_name.toLowerCase().includes(q) || r.customer_name.toLowerCase().includes(q));
+  document.getElementById('rowCount').textContent = `${rows.length} row(s) pending review`;
+  const tbody = document.getElementById('reviewTbody');
+  if (!filtered.length){
+    tbody.innerHTML = `<tr><td colspan="17" class="empty-state"><div class="icon">📭</div>No extracted orders yet. Go to <a href="{{ url_for('page_upload') }}" style="color:var(--indigo);font-weight:600">Upload Labels</a> to get started.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(r => `
+    <tr data-id="${r.id}">
+      <td>${r.id}</td>
+      <td><input value="${r.product_name}" onchange="updateField('${r.id}','product_name',this.value)"></td>
+      <td><input value="${r.sku}" onchange="updateField('${r.id}','sku',this.value)"></td>
+      <td><input value="${r.customer_name}" onchange="updateField('${r.id}','customer_name',this.value)"></td>
+      <td><input value="${r.city}" onchange="updateField('${r.id}','city',this.value)"></td>
+      <td><input type="number" value="${r.quantity}" onchange="updateField('${r.id}','quantity',this.value)" style="width:56px"></td>
+      <td><input type="number" value="${r.selling_price}" onchange="updateField('${r.id}','selling_price',this.value)" style="width:80px"></td>
+      <td><input type="number" value="${r.purchase_cost}" onchange="updateField('${r.id}','purchase_cost',this.value)" style="width:80px"></td>
+      <td><input type="number" value="${r.payment_status ?? r.selling_price}" onchange="updateField('${r.id}','payment_status',this.value)" style="width:90px"></td>
+      <td><select onchange="updateField('${r.id}','status',this.value)"><option ${r.status==='Extracted'?'selected':''}>Extracted</option><option ${r.status==='Processing'?'selected':''}>Processing</option><option ${r.status==='Shipped'?'selected':''}>Shipped</option><option ${r.status==='Delivered'?'selected':''}>Delivered</option><option ${r.status==='Return'?'selected':''}>Return</option></select></td>
+      <td><input type="number" value="${r.shipping}" onchange="updateField('${r.id}','shipping',this.value)" style="width:70px"></td>
+      <td><input type="number" value="${r.tax}" onchange="updateField('${r.id}','tax',this.value)" style="width:70px"></td>
+      <td><input type="number" value="${r.platform_fee}" onchange="updateField('${r.id}','platform_fee',this.value)" style="width:70px"></td>
+      <td>${formatINR(r.total_cost)}</td>
+      <td class="${r.profit>0?'text-success':(r.profit<0?'text-danger':'text-warning')}">${formatINR(r.profit)}</td>
+      <td>${formatPct(r.margin)}</td>
+      <td class="actions-cell"><button class="icon-btn" title="Delete" onclick="deleteRow('${r.id}')">🗑</button></td>
+    </tr>`).join('');
+}
+
+async function updateField(id, field, value){
+  const numericFields = ['quantity','selling_price','purchase_cost','payment_status','shipping','tax','platform_fee'];
+  const payload = { [field]: numericFields.includes(field) ? Number(value) : value };
+  const res = await api(`/api/review/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  if (res.ok){
+    const idx = rows.findIndex(r => r.id === id);
+    rows[idx] = res.row;
+    renderTable();
+  } else {
+    toast(res.error || 'Update failed', 'error');
+  }
+}
+
+async function deleteRow(id){
+  await api(`/api/review/${id}`, { method: 'DELETE' });
+  rows = rows.filter(r => r.id !== id);
+  renderTable();
+  toast('Row removed', 'info');
+}
+
+async function addRow(){
+  const res = await api('/api/review/add', { method: 'POST' });
+  if (res.ok){ rows.push(res.row); renderTable(); }
+  else toast(res.error || 'Could not add row', 'error');
+}
+
+async function saveAll(){
+  if (!rows.length){ toast('Nothing to save yet.', 'error'); return; }
+  const res = await api('/api/review/save', { method: 'POST' });
+  if (res.ok){
+    toast(`Saved ${res.saved} order(s) to your Orders list.`);
+    rows = [];
+    renderTable();
+  } else {
+    toast(res.error || 'Save failed', 'error');
+  }
+}
+
+loadReview();
+</script>
+{% endblock %}

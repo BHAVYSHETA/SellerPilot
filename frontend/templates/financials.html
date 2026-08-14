@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Financials{% endblock %}
+{% block page_title %}Financials{% endblock %}
+
+{% block content %}
+<div class="kpi-grid" id="kpiGrid"></div>
+
+<div class="chart-grid">
+  <div class="card">
+    <div class="card-head"><h3>Revenue vs Cost</h3><span class="sub">Full history</span></div>
+    <div class="chart-box"><canvas id="finRevCostChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>Cost Breakdown</h3></div>
+    <div class="chart-box"><canvas id="finCostBreakdown"></canvas></div>
+  </div>
+</div>
+
+<div class="pill-tabs">
+  <button class="pill-tab active" data-tab="business" onclick="switchTab('business')">Business Numbers</button>
+  <button class="pill-tab" data-tab="marketing" onclick="switchTab('marketing')">Marketing</button>
+  <button class="pill-tab" data-tab="goals" onclick="switchTab('goals')">Future Goals</button>
+</div>
+
+<div class="card" id="tab-business">
+  <div class="card-head"><h3>Business Overview</h3></div>
+  <div class="kpi-grid" id="bizNumbers" style="margin-bottom:0"></div>
+</div>
+
+<div class="card" id="tab-marketing" style="display:none">
+  <div class="card-head"><h3>Marketing Performance</h3><span class="sub">Demo metrics</span></div>
+  <div class="kpi-grid" id="marketingNumbers" style="margin-bottom:0"></div>
+</div>
+
+<div class="card" id="tab-goals" style="display:none">
+  <div class="card-head"><h3>Future Goals</h3></div>
+  <ul id="goalsList" style="margin:0;padding-left:20px;line-height:2;color:var(--text-600)"></ul>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let finCharts = {};
+
+function switchTab(tab){
+  document.querySelectorAll('.pill-tab').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
+  ['business','marketing','goals'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab ? 'block':'none');
+}
+
+async function loadFinancials(){
+  const data = await api('/api/financials/summary');
+  const k = data.kpi;
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi-card"><div class="label">Revenue</div><div class="value">${formatINR(k.revenue)}</div></div>
+    <div class="kpi-card"><div class="label">Total Cost</div><div class="value">${formatINR(k.total_cost)}</div></div>
+    <div class="kpi-card"><div class="label">Profit</div><div class="value">${formatINR(k.profit)}</div></div>
+    <div class="kpi-card"><div class="label">Profit Margin</div><div class="value">${formatPct(k.margin)}</div></div>
+  `;
+
+  finCharts.revCost && finCharts.revCost.destroy();
+  finCharts.revCost = new Chart(document.getElementById('finRevCostChart'), {
+    type: 'line',
+    data: { labels: data.series.labels, datasets: [
+      { label:'Revenue', data: data.series.revenue, borderColor:'#4f5fd6', backgroundColor:'rgba(79,95,214,.1)', fill:true, tension:.3 },
+      { label:'Cost', data: data.series.cost, borderColor:'#c0392b', backgroundColor:'rgba(192,57,43,.08)', fill:true, tension:.3 },
+    ]},
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} }
+  });
+
+  finCharts.costBreak && finCharts.costBreak.destroy();
+  const cb = data.cost_breakdown;
+  finCharts.costBreak = new Chart(document.getElementById('finCostBreakdown'), {
+    type: 'pie',
+    data: { labels: Object.keys(cb), datasets: [{ data: Object.values(cb),
+      backgroundColor: ['#0f2a4a','#4f5fd6','#2f6feb','#d68910','#1e8449','#c0392b'] }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{boxWidth:10,font:{size:11}}}} }
+  });
+}
+
+async function loadOverview(){
+  const data = await api('/api/business-overview');
+  const b = data.business_numbers;
+  document.getElementById('bizNumbers').innerHTML = `
+    <div class="kpi-card"><div class="label">Revenue</div><div class="value">${formatINR(b.revenue)}</div></div>
+    <div class="kpi-card"><div class="label">Total Cost</div><div class="value">${formatINR(b.total_cost)}</div></div>
+    <div class="kpi-card"><div class="label">Profit</div><div class="value">${formatINR(b.profit)}</div></div>
+    <div class="kpi-card"><div class="label">Margin</div><div class="value">${formatPct(b.margin)}</div></div>
+    <div class="kpi-card"><div class="label">Customers</div><div class="value">${data.customer.count}</div></div>
+    <div class="kpi-card"><div class="label">Repeat Customers</div><div class="value">${data.customer.repeat_customers}</div></div>
+  `;
+  const m = data.marketing;
+  document.getElementById('marketingNumbers').innerHTML = `
+    <div class="kpi-card"><div class="label">Orders from Marketing</div><div class="value">${m.orders_from_marketing}</div></div>
+    <div class="kpi-card"><div class="label">Marketing Cost</div><div class="value">${formatINR(m.marketing_cost)}</div></div>
+    <div class="kpi-card"><div class="label">Marketing Revenue</div><div class="value">${formatINR(m.marketing_revenue)}</div></div>
+    <div class="kpi-card"><div class="label">Marketing ROI</div><div class="value">${formatPct(m.marketing_roi)}</div></div>
+  `;
+  document.getElementById('goalsList').innerHTML = data.future_goals.map(g => `<li>${g}</li>`).join('');
+}
+
+loadFinancials();
+loadOverview();
+</script>
+{% endblock %}

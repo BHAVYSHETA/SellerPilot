@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SellerPilot · Pilot Your Business. Grow Your Profits.</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="landing-premium">
+<nav class="landing-nav">
+  <div class="brand landing-brand"><img class="brand-logo" src="{{ url_for('static', filename='images/sellerpilot-logo.png') }}" alt="SellerPilot"><span>SELLER<span>PILOT</span></span></div>
+  <div class="links"><a href="#workflow">How it works</a><a href="#features">Features</a><a href="#pricing">Pricing</a></div>
+  <div class="actions"><a href="{{ url_for('login_page') }}" class="btn btn-ghost">Log in</a><a href="{{ url_for('login_page') }}" class="btn btn-gold">Start Demo</a></div>
+</nav>
+<section class="hero hero-premium">
+  <img class="hero-logo-lockup" src="{{ url_for('static', filename='images/sellerpilot-logo.png') }}" alt="SellerPilot logo"><div class="hero-badge gold-badge">Built for e-commerce sellers</div>
+  <h1>Pilot your business.<br><span class="gold-text">Grow your profits.</span></h1>
+  <p class="sub">Upload marketplace labels, extract order data, calculate real business numbers and generate a clean Excel report — without rebuilding your spreadsheet every day.</p>
+  <div class="hero-ctas"><a href="{{ url_for('login_page') }}" class="btn btn-gold btn-lg">Launch Demo →</a><a href="#workflow" class="btn btn-dark-outline btn-lg">See the workflow</a></div>
+  <div class="hero-proof"><span>✓ PDF / Excel / CSV</span><span>✓ Profit & Margin</span><span>✓ One-click Excel</span><span>✓ Premium analytics</span></div>
+</section>
+<section class="section section-dark" id="workflow"><div class="section-head"><div class="kicker gold-text">THE CORE DEMO</div><h2>From label to business decision.</h2><p>One clean workflow for the Shark Tank demo — and a foundation for a real SaaS product.</p></div>
+<div class="workflow-strip workflow-gold"><div class="workflow-step"><div class="n">1</div><span class="label">Upload</span></div><span class="workflow-arrow">→</span><div class="workflow-step"><div class="n">2</div><span class="label">Extract</span></div><span class="workflow-arrow">→</span><div class="workflow-step"><div class="n">3</div><span class="label">Review</span></div><span class="workflow-arrow">→</span><div class="workflow-step"><div class="n">4</div><span class="label">Calculate</span></div><span class="workflow-arrow">→</span><div class="workflow-step"><div class="n">5</div><span class="label">Excel</span></div></div></section>
+<section class="section section-dark" id="features"><div class="section-head"><div class="kicker gold-text">WHY SELLERPILOT</div><h2>Built around the seller's daily pain.</h2></div><div class="feature-grid feature-grid-premium">
+<div class="feature-card dark-card"><div class="feature-icon gold-icon">↥</div><h3>Label Extraction</h3><p>Read real order labels and normalize them into a consistent SellerPilot data model.</p></div>
+<div class="feature-card dark-card"><div class="feature-icon gold-icon">₹</div><h3>Profit Engine</h3><p>Track selling price, cost price, settlement and profit instead of relying on guesswork.</p></div>
+<div class="feature-card dark-card"><div class="feature-icon gold-icon">▦</div><h3>Excel Automation</h3><p>Turn extracted orders into a structured workbook ready for your existing workflow.</p></div>
+<div class="feature-card dark-card"><div class="feature-icon gold-icon">◈</div><h3>Analytics</h3><p>Revenue, costs, margin, product performance and loss alerts in one dashboard.</p></div>
+</div></section>
+<section class="section pricing-section" id="pricing"><div class="section-head"><div class="kicker gold-text">PREMIUM</div><h2>Simple pricing. Better value yearly.</h2><p>Premium is the business model behind the product.</p></div><div class="pricing-grid landing-pricing"><div class="price-card dark-price"><div class="price-badge">MONTHLY</div><h3>Premium</h3><div class="price">₹1,000 <span>/ month</span></div><ul><li>✓ Unlimited label processing</li><li>✓ Profit & margin analytics</li><li>✓ Excel generation & export</li><li>✓ Seller Assistant</li></ul><a href="{{ url_for('login_page') }}" class="btn btn-dark-outline btn-block">Try Demo</a></div><div class="price-card featured gold-price"><div class="save-badge">BEST VALUE · 20% LESS</div><div class="price-badge">YEARLY</div><h3>Premium Annual</h3><div class="price">₹800 <span>/ month</span></div><div class="annual-price">₹9,600 billed yearly</div><ul><li>✓ Everything in Premium</li><li>✓ Unlimited label processing</li><li>✓ Advanced reporting</li><li>✓ Best value for growing sellers</li></ul><a href="{{ url_for('login_page') }}" class="btn btn-gold btn-block">Start Demo</a></div></div><p class="pricing-footnote">For the prototype, subscription activation is simulated. A production version can connect Razorpay/Stripe without changing the product flow.</p></section>
+<footer class="landing-footer landing-footer-dark">© 2026 SellerPilot · Pilot Your Business. Grow Your Profits.</footer>
+</body></html>

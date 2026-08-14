@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block topbar_actions %}
+<button class="btn btn-outline btn-sm" onclick="loadDemoData()">🔄 Load Demo Data</button>
+<a href="{{ url_for('page_upload') }}" class="btn btn-primary btn-sm">📤 Upload Labels</a>
+{% endblock %}
+
+{% block content %}
+<div class="kpi-grid" id="kpiGrid"></div>
+
+<div class="chart-grid">
+  <div class="card">
+    <div class="card-head"><h3>Revenue vs Cost</h3><span class="sub">By order date</span></div>
+    <div class="chart-box"><canvas id="revCostChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>Cost Breakdown</h3><span class="sub">All orders</span></div>
+    <div class="chart-box"><canvas id="costBreakdownChart"></canvas></div>
+  </div>
+</div>
+
+<div class="chart-grid-2">
+  <div class="card">
+    <div class="card-head"><h3>Profit Trend</h3><span class="sub">Over time</span></div>
+    <div class="chart-box sm"><canvas id="profitTrendChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>Sales by Product</h3><span class="sub">Top 8 by revenue</span></div>
+    <div class="chart-box sm"><canvas id="salesByProductChart"></canvas></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>🚀 Main Workflow</h3>
+    <span class="sub">Upload → Extract → Review → Calculate → Excel</span>
+  </div>
+  <div class="workflow-strip">
+    <div class="workflow-step"><div class="n">1</div><span class="label">Upload Labels</span></div>
+    <span class="workflow-arrow">→</span>
+    <div class="workflow-step"><div class="n">2</div><span class="label">Extract Info</span></div>
+    <span class="workflow-arrow">→</span>
+    <div class="workflow-step"><div class="n">3</div><span class="label">Review Data</span></div>
+    <span class="workflow-arrow">→</span>
+    <div class="workflow-step"><div class="n">4</div><span class="label">Calc Profit</span></div>
+    <span class="workflow-arrow">→</span>
+    <div class="workflow-step"><div class="n">5</div><span class="label">Generate Excel</span></div>
+    <span class="workflow-arrow">→</span>
+    <div class="workflow-step"><div class="n">6</div><span class="label">Export</span></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let charts = {};
+
+function kpiCard(label, value, trend, isPct=false){
+  const up = trend >= 0;
+  return `<div class="kpi-card">
+    <div class="label">${label}</div>
+    <div class="value">${isPct ? formatPct(value) : formatINR(value)}</div>
+    <div class="kpi-trend ${up ? 'up':'down'}">${up?'▲':'▼'} ${Math.abs(trend)}% vs previous period</div>
+  </div>`;
+}
+
+async function loadDashboard(){
+  const data = await api('/api/dashboard/summary');
+  const k = data.kpi;
+  document.getElementById('kpiGrid').innerHTML =
+    kpiCard('Revenue', k.revenue, data.trend.revenue_change_pct) +
+    kpiCard('Total Cost', k.total_cost, data.trend.cost_change_pct) +
+    kpiCard('Profit', k.profit, data.trend.profit_change_pct) +
+    kpiCard('Profit Margin', k.margin, data.trend.margin_change_pct, true);
+
+  const labels = data.revenue_vs_cost.labels;
+
+  charts.revCost && charts.revCost.destroy();
+  charts.revCost = new Chart(document.getElementById('revCostChart'), {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'Revenue', data: data.revenue_vs_cost.revenue, backgroundColor: '#4f5fd6', borderRadius: 6 },
+      { label: 'Cost', data: data.revenue_vs_cost.cost, backgroundColor: '#c9cef2', borderRadius: 6 },
+    ]},
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} }
+  });
+
+  charts.costBreak && charts.costBreak.destroy();
+  const cb = data.cost_breakdown;
+  charts.costBreak = new Chart(document.getElementById('costBreakdownChart'), {
+    type: 'doughnut',
+    data: { labels: Object.keys(cb), datasets: [{ data: Object.values(cb),
+      backgroundColor: ['#0f2a4a','#4f5fd6','#2f6feb','#d68910','#1e8449','#c0392b'] }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{boxWidth:10,font:{size:11}}}} }
+  });
+
+  charts.profitTrend && charts.profitTrend.destroy();
+  charts.profitTrend = new Chart(document.getElementById('profitTrendChart'), {
+    type: 'line',
+    data: { labels, datasets: [{ label:'Profit', data: data.profit_trend.profit, borderColor:'#1e8449',
+      backgroundColor:'rgba(30,132,73,.1)', fill:true, tension:.35 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+  });
+
+  charts.salesByProduct && charts.salesByProduct.destroy();
+  charts.salesByProduct = new Chart(document.getElementById('salesByProductChart'), {
+    type: 'bar',
+    data: { labels: data.sales_by_product.labels, datasets: [{ data: data.sales_by_product.revenue,
+      backgroundColor: '#2f6feb', borderRadius: 6 }] },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+  });
+}
+
+async function loadDemoData(){
+  const res = await api('/api/demo/load', { method: 'POST' });
+  if (res.ok) { toast('Demo data loaded successfully.'); loadDashboard(); }
+}
+
+loadDashboard();
+</script>
+{% endblock %}

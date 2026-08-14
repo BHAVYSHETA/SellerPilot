@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+<div class="card" style="max-width:760px">
+  <div class="card-head"><h3>Business Settings</h3><span class="sub">Used by reports and demo screens</span></div>
+  <div class="field-grid">
+    <div class="field"><label>Business Name</label><input id="business_name"></div>
+    <div class="field"><label>GST Number</label><input id="gst_number"></div>
+    <div class="field"><label>Currency</label><select id="currency"><option>INR</option><option>USD</option></select></div>
+    <div class="field"><label>Default Packaging Cost (₹)</label><input id="default_packaging_cost" type="number"></div>
+    <div class="field"><label>Default Tax (%)</label><input id="default_tax_percent" type="number"></div>
+    <div class="field"><label>Default Shipping Cost (₹)</label><input id="default_shipping_cost" type="number"></div>
+  </div>
+  <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input id="notifications" type="checkbox"> Enable notifications</label>
+  <div class="modal-actions"><button class="btn btn-primary" onclick="saveSettings()">Save Settings</button></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function loadSettings(){const d=await api('/api/settings'); Object.keys(d).forEach(k=>{const e=document.getElementById(k); if(!e)return; if(e.type==='checkbox')e.checked=!!d[k]; else e.value=d[k];});}
+async function saveSettings(){const payload={business_name:business_name.value,gst_number:gst_number.value,currency:currency.value,default_packaging_cost:Number(default_packaging_cost.value),default_tax_percent:Number(default_tax_percent.value),default_shipping_cost:Number(default_shipping_cost.value),notifications:notifications.checked}; const d=await api('/api/settings',{method:'POST',body:JSON.stringify(payload)}); toast(d.ok?'Settings saved.':d.error,(d.ok?'success':'error'));}
+loadSettings();
+</script>
+{% endblock %}

@@ -1,0 +1,31 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>SellerPilot Premium</title><link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></head><body class="landing-premium"><nav class="landing-nav"><div class="brand landing-brand"><img class="brand-logo" src="{{ url_for('static', filename='logo.svg') }}" alt="SellerPilot"><span>SELLER<span>PILOT</span></span></div><div class="links"><a href="{{ url_for('landing') }}">Home</a><a href="{{ url_for('landing') }}#features">Features</a><a href="{{ url_for('landing') }}#pricing">Pricing</a></div><div class="actions"><a href="{{ url_for('login_page') }}" class="btn btn-dark-outline">Log in</a></div></nav><main class="pricing-public"><div class="pricing-hero card">
+  <div class="pricing-kicker">SELLERPILOT PREMIUM</div>
+  <h2>Stop managing your business in spreadsheets.</h2>
+  <p>Automate label extraction, profit tracking and Excel reporting — with pricing designed for serious sellers.</p>
+</div>
+<div class="pricing-grid">
+  <div class="price-card">
+    <div class="price-badge">MONTHLY</div>
+    <h3>Premium Monthly</h3>
+    <div class="price">₹1,000 <span>/ month</span></div>
+    <p class="muted">Flexible. Cancel anytime.</p>
+    <ul>
+      <li>✓ Unlimited label uploads</li><li>✓ Multi-platform extraction architecture</li><li>✓ Profit & margin analytics</li><li>✓ Excel generation & export</li><li>✓ Seller Assistant</li>
+    </ul>
+    <a class="btn btn-outline btn-block" href="{{ url_for('login_page') }}">Choose Monthly</a>
+  </div>
+  <div class="price-card featured">
+    <div class="save-badge">BEST VALUE · SAVE 20%</div>
+    <div class="price-badge">YEARLY</div>
+    <h3>Premium Yearly</h3>
+    <div class="price">₹800 <span>/ month</span></div>
+    <div class="annual-price">₹9,600 billed yearly</div>
+    <p class="muted">Equivalent to ₹800/month.</p>
+    <ul>
+      <li>✓ Everything in Monthly</li><li>✓ Unlimited label uploads</li><li>✓ Priority automation roadmap</li><li>✓ Advanced reports</li><li>✓ Best value for growing sellers</li>
+    </ul>
+    <a class="btn btn-gold btn-block" href="{{ url_for('login_page') }}">Choose Yearly</a>
+  </div>
+</div>
+<div class="pricing-note">Demo note: plan activation here is simulated for the Shark Tank prototype. No real payment is taken. A production release can connect Razorpay/Stripe to the same subscription endpoint.</div>
+</main><footer class="landing-footer landing-footer-dark">© 2026 SellerPilot · Premium SaaS</footer></body></html>

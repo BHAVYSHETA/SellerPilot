@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Products{% endblock %}
+{% block page_title %}Products{% endblock %}
+{% block topbar_actions %}
+<button class="btn btn-primary btn-sm" onclick="openAddProduct()">+ Add Product</button>
+{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div class="search"><span class="icon">🔍</span><input id="searchInput" placeholder="Search products..." oninput="renderProducts()"></div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h3>Product Catalog</h3><span class="sub" id="productCount">0 products</span></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Product</th><th>Category</th><th>SKU</th><th>Purchase Price</th><th>Selling Price</th>
+        <th>Profit/Unit</th><th>Margin</th><th>Stock</th><th>Supplier</th><th>Actions</th>
+      </tr></thead>
+      <tbody id="productsTbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="productModal">
+  <div class="modal">
+    <h3 id="modalTitle">Add Product</h3>
+    <div class="field-grid">
+      <div class="field"><label>Product Name</label><input id="f_name"></div>
+      <div class="field"><label>Category</label><input id="f_category"></div>
+      <div class="field"><label>SKU</label><input id="f_sku"></div>
+      <div class="field"><label>Supplier</label><input id="f_supplier"></div>
+      <div class="field"><label>Purchase Price (₹)</label><input id="f_purchase" type="number"></div>
+      <div class="field"><label>Selling Price (₹)</label><input id="f_selling" type="number"></div>
+      <div class="field"><label>Stock</label><input id="f_stock" type="number"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('productModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitProduct()">Save Product</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let products = [];
+let editingId = null;
+
+async function loadProducts(){
+  products = await api('/api/products');
+  renderProducts();
+}
+
+function renderProducts(){
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = products.filter(p => !q || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+  document.getElementById('productCount').textContent = `${products.length} products`;
+  const tbody = document.getElementById('productsTbody');
+  if (!filtered.length){ tbody.innerHTML = `<tr><td colspan="10" class="empty-state">No products found</td></tr>`; return; }
+  tbody.innerHTML = filtered.map(p => `
+    <tr>
+      <td>${p.name}</td>
+      <td><span class="badge badge-indigo">${p.category}</span></td>
+      <td>${p.sku}</td>
+      <td>${formatINR(p.purchase_price)}</td>
+      <td>${formatINR(p.selling_price)}</td>
+      <td class="${p.profit_per_unit>=0?'text-success':'text-danger'}">${formatINR(p.profit_per_unit)}</td>
+      <td>${formatPct(p.margin)}</td>
+      <td>${p.stock}</td>
+      <td>${p.supplier}</td>
+      <td class="actions-cell">
+        <button class="icon-btn" onclick='openEditProduct(${JSON.stringify(p)})'>✎</button>
+        <button class="icon-btn" onclick="deleteProduct('${p.id}')">🗑</button>
+      </td>
+    </tr>`).join('');
+}
+
+function openAddProduct(){
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Add Product';
+  ['f_name','f_category','f_sku','f_supplier','f_purchase','f_selling','f_stock'].forEach(id => document.getElementById(id).value = '');
+  openModal('productModal');
+}
+
+function openEditProduct(p){
+  editingId = p.id;
+  document.getElementById('modalTitle').textContent = 'Edit Product';
+  document.getElementById('f_name').value = p.name;
+  document.getElementById('f_category').value = p.category;
+  document.getElementById('f_sku').value = p.sku;
+  document.getElementById('f_supplier').value = p.supplier;
+  document.getElementById('f_purchase').value = p.purchase_price;
+  document.getElementById('f_selling').value = p.selling_price;
+  document.getElementById('f_stock').value = p.stock;
+  openModal('productModal');
+}
+
+async function submitProduct(){
+  const payload = {
+    name: document.getElementById('f_name').value,
+    category: document.getElementById('f_category').value,
+    sku: document.getElementById('f_sku').value,
+    supplier: document.getElementById('f_supplier').value,
+    purchase_price: document.getElementById('f_purchase').value,
+    selling_price: document.getElementById('f_selling').value,
+    stock: document.getElementById('f_stock').value,
+  };
+  const res = editingId
+    ? await api(`/api/products/${editingId}`, { method: 'PUT', body: JSON.stringify(payload) })
+    : await api('/api/products', { method: 'POST', body: JSON.stringify(payload) });
+
+  if (res.ok){
+    closeModal('productModal');
+    toast(editingId ? 'Product updated.' : 'Product added.');
+    loadProducts();
+  } else {
+    toast(res.error || 'Could not save product.', 'error');
+  }
+}
+
+async function deleteProduct(id){
+  await api(`/api/products/${id}`, { method: 'DELETE' });
+  toast('Product deleted.', 'info');
+  loadProducts();
+}
+
+loadProducts();
+</script>
+{% endblock %}

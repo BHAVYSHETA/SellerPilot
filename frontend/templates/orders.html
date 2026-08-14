@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Orders{% endblock %}
+{% block page_title %}Orders{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div class="search"><span class="icon">🔍</span><input id="searchInput" placeholder="Search order, product, customer..." oninput="debouncedLoad()"></div>
+  <select id="cityFilter" onchange="loadOrders()"><option value="">All Cities</option></select>
+  <select id="productFilter" onchange="loadOrders()"><option value="">All Products</option></select>
+  <select id="statusFilter" onchange="loadOrders()"><option value="">All Statuses</option></select>
+  <select id="profitFilter" onchange="loadOrders()">
+    <option value="">All Profit</option>
+    <option value="positive">Profitable</option>
+    <option value="negative">Loss-making</option>
+  </select>
+  <select id="sortSelect" onchange="loadOrders()">
+    <option value="">Sort: Default</option>
+    <option value="date_desc">Newest First</option>
+    <option value="revenue_desc">Revenue: High → Low</option>
+    <option value="revenue_asc">Revenue: Low → High</option>
+    <option value="profit_desc">Profit: High → Low</option>
+    <option value="profit_asc">Profit: Low → High</option>
+  </select>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>All Orders</h3>
+    <span class="sub" id="orderCount">0 orders</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Order ID</th><th>Date</th><th>Product</th><th>Customer</th><th>City</th>
+        <th>Revenue</th><th>Total Cost</th><th>Profit</th><th>Margin</th><th>Status</th>
+      </tr></thead>
+      <tbody id="ordersTbody"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let debounceTimer;
+function debouncedLoad(){ clearTimeout(debounceTimer); debounceTimer = setTimeout(loadOrders, 250); }
+
+function statusBadge(s){
+  const map = { Delivered:'success', Shipped:'indigo', Processing:'warning', Returned:'danger' };
+  return `<span class="badge badge-${map[s]||'neutral'}">${s}</span>`;
+}
+
+let filtersPopulated = false;
+
+async function loadOrders(){
+  const params = new URLSearchParams({
+    q: document.getElementById('searchInput').value,
+    city: document.getElementById('cityFilter').value,
+    product: document.getElementById('productFilter').value,
+    status: document.getElementById('statusFilter').value,
+    profit: document.getElementById('profitFilter').value,
+    sort_by: document.getElementById('sortSelect').value,
+  });
+  const data = await api('/api/orders?' + params.toString());
+  document.getElementById('orderCount').textContent = `${data.count} orders`;
+
+  if (!filtersPopulated){
+    fillOptions('cityFilter', data.cities);
+    fillOptions('productFilter', data.products);
+    fillOptions('statusFilter', data.statuses);
+    filtersPopulated = true;
+  }
+
+  const tbody = document.getElementById('ordersTbody');
+  if (!data.orders.length){
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-state"><div class="icon">🧾</div>No orders match your filters</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.orders.map(o => `
+    <tr>
+      <td>${o.id}</td>
+      <td>${o.date}</td>
+      <td>${o.product_name}</td>
+      <td>${o.customer_name}</td>
+      <td>${o.city}</td>
+      <td>${formatINR(o.revenue)}</td>
+      <td>${formatINR(o.total_cost)}</td>
+      <td class="${o.profit>0?'text-success':(o.profit<0?'text-danger':'text-warning')}">${formatINR(o.profit)}</td>
+      <td>${formatPct(o.margin)}</td>
+      <td>${statusBadge(o.status)}</td>
+    </tr>`).join('');
+}
+
+function fillOptions(id, values){
+  const sel = document.getElementById(id);
+  values.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    sel.appendChild(opt);
+  });
+}
+
+loadOrders();
+</script>
+{% endblock %}
