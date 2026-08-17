@@ -13,12 +13,17 @@ from services.calculations import (enrich_order, compute_margin,
 from services.excel_service import generate_excel_report, REPORTS_DIR
 from services.extraction import extract_file, simulate_extraction
 from services.assistant import answer_question
+from services.persistence import (
+    ensure_demo_user, authenticate_user, create_user, get_user, user_access,
+    activate_plan, get_product_cost, set_product_cost
+)
 
 app = Flask(__name__, template_folder="frontend/templates", static_folder="frontend/static")
 app.secret_key = "shark-tank-demo-secret-key"
 
 DEMO_EMAIL = "demo@example.com"
 DEMO_PASSWORD = "demo123"
+ensure_demo_user(DEMO_EMAIL, DEMO_PASSWORD)
 
 PLANS = {
     "free": {"name": "Free Demo", "monthly": 0, "annual": 0, "label_limit": 3},
@@ -72,7 +77,11 @@ def login_required(f):
 
 
 def current_plan():
-    return session.get("plan", "free")
+    plan = session.get("plan", "free")
+    if plan == "trial":
+        access = user_access(session.get("user_email", DEMO_EMAIL))
+        return "premium_monthly" if access.get("active") else "free"
+    return plan
 
 
 def premium_required(f):
@@ -172,29 +181,83 @@ def page_settings():
 # ---------------------------------------------------------------------------
 # Auth API
 # ---------------------------------------------------------------------------
+@app.route("/api/signup", methods=["POST"])
+def api_signup():
+    data = request.get_json(force=True, silent=True) or {}
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+    if not email or not password:
+        return jsonify({"ok": False, "error": "Email and password are required."}), 400
+    if len(password) < 6:
+        return jsonify({"ok": False, "error": "Password must be at least 6 characters."}), 400
+    try:
+        user = create_user(email, password)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 409
+    session["logged_in"] = True
+    session["user_email"] = email
+    session["plan"] = "trial"
+    return jsonify({"ok": True, "redirect": url_for("page_dashboard"), "trial_days": 7})
+
+
 @app.route("/api/login", methods=["POST"])
 def api_login():
     data = request.get_json(force=True, silent=True) or {}
-    email = data.get("email", "").strip()
+    email = data.get("email", "").strip().lower()
     password = data.get("password", "")
-    if email == DEMO_EMAIL and password == DEMO_PASSWORD:
-        session["logged_in"] = True
-        session.setdefault("plan", "free")
-        return jsonify({"ok": True, "redirect": url_for("page_dashboard")})
-    return jsonify({"ok": False, "error": "Invalid email or password. Use the demo credentials shown below."}), 401
+    user = authenticate_user(email, password)
+    if not user:
+        return jsonify({"ok": False, "error": "Invalid email or password."}), 401
+    access = user_access(email)
+    session["logged_in"] = True
+    session["user_email"] = email
+    session["plan"] = access["plan"]
+    return jsonify({"ok": True, "redirect": url_for("page_dashboard"), "subscription": access})
 
 
 @app.route("/api/demo-login", methods=["POST"])
 def api_demo_login():
+    ensure_demo_user(DEMO_EMAIL, DEMO_PASSWORD)
+    access = user_access(DEMO_EMAIL)
     session["logged_in"] = True
-    session["plan"] = "premium_yearly"
-    return jsonify({"ok": True, "redirect": url_for("page_dashboard")})
+    session["user_email"] = DEMO_EMAIL
+    session["plan"] = access["plan"]
+    return jsonify({"ok": True, "redirect": url_for("page_dashboard"), "subscription": access})
 
 
 @app.route("/api/logout", methods=["POST"])
 def api_logout():
     session.clear()
     return jsonify({"ok": True, "redirect": url_for("landing")})
+
+
+@app.route("/api/subscription/status")
+def api_subscription_status():
+    email = session.get("user_email")
+    if not email:
+        return jsonify({"ok": False, "error": "Not logged in."}), 401
+    access = user_access(email)
+    session["plan"] = access["plan"]
+    return jsonify({"ok": True, "email": email, **access,
+                    "monthly_price": 1000, "yearly_price": 9600,
+                    "yearly_monthly_equivalent": 800, "trial_days": 7})
+
+
+@app.route("/api/subscription/activate", methods=["POST"])
+def api_subscription_activate():
+    # Demo-only activation. Replace this endpoint with Razorpay webhook verification
+    # before accepting real money.
+    email = session.get("user_email")
+    if not email:
+        return jsonify({"ok": False, "error": "Not logged in."}), 401
+    data = request.get_json(force=True, silent=True) or {}
+    plan = data.get("plan")
+    try:
+        user = activate_plan(email, plan)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    session["plan"] = plan
+    return jsonify({"ok": True, "message": "Premium activated for demo.", "plan": user["plan"]})
 
 
 # ---------------------------------------------------------------------------
@@ -401,8 +464,24 @@ def api_review_add():
     if not products or not customers:
         return jsonify({"ok": False, "error": "No product/customer catalog available."}), 400
     row = simulate_extraction("manual-entry", products, customers, count=1)[0]
+    saved_cost = get_product_cost(session.get("user_email", DEMO_EMAIL), row.get("sku", ""))
+    if saved_cost is not None:
+        row["purchase_cost"] = saved_cost
+        row["cost_source"] = "saved"
+        enrich_order(row)
+    else:
+        row["cost_source"] = "manual"
     STORE["pending_review"].append(row)
     return jsonify({"ok": True, "row": row})
+
+
+@app.route("/api/product-cost/<sku>")
+def api_product_cost(sku):
+    email = session.get("user_email")
+    if not email:
+        return jsonify({"ok": False, "error": "Not logged in."}), 401
+    cost = get_product_cost(email, sku)
+    return jsonify({"ok": True, "sku": sku, "purchase_cost": cost, "found": cost is not None})
 
 
 @app.route("/api/review/save", methods=["POST"])
@@ -483,6 +562,28 @@ def api_orders():
     })
 
 
+@app.route("/api/orders/<order_id>", methods=["PUT"])
+def api_order_update(order_id):
+    data = request.get_json(force=True, silent=True) or {}
+    order = next((o for o in STORE["orders"] if o.get("id") == order_id), None)
+    if not order:
+        return jsonify({"ok": False, "error": "Order not found."}), 404
+
+    allowed = ("status", "payment_state", "payment_status", "refund_amount",
+               "return_shipping", "shipping", "other_cost", "platform_fee", "tax")
+    for key in allowed:
+        if key in data:
+            if key in {"payment_status", "refund_amount", "return_shipping", "shipping", "other_cost", "platform_fee", "tax"}:
+                try:
+                    order[key] = float(data[key] or 0)
+                except (TypeError, ValueError):
+                    return jsonify({"ok": False, "error": f"{key} must be a valid number."}), 400
+            else:
+                order[key] = data[key]
+    enrich_order(order)
+    return jsonify({"ok": True, "order": order})
+
+
 # ---------------------------------------------------------------------------
 # Products
 # ---------------------------------------------------------------------------
@@ -516,6 +617,7 @@ def api_products_create():
     product["profit_per_unit"] = product_profit_per_unit(product["purchase_price"], product["selling_price"])
     product["margin"] = product_margin(product["purchase_price"], product["selling_price"])
     STORE["products"].append(product)
+    set_product_cost(session.get("user_email", DEMO_EMAIL), product["sku"], product["purchase_price"])
     return jsonify({"ok": True, "product": product})
 
 
@@ -539,6 +641,7 @@ def api_products_update(pid):
             p["stock"] = stock
             p["profit_per_unit"] = product_profit_per_unit(pp, sp)
             p["margin"] = product_margin(pp, sp)
+            set_product_cost(session.get("user_email", DEMO_EMAIL), p["sku"], pp)
             return jsonify({"ok": True, "product": p})
     return jsonify({"ok": False, "error": "Product not found."}), 404
 

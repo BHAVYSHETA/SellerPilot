@@ -75,7 +75,7 @@ function initAssistant() {
   if (!fab || !panel || !input || !send || !body) return;
 
   const chips = ["What is my total profit?", "Which product has the highest margin?",
-                 "Which products are loss-making?", "How much did I spend on shipping?"];
+    "Which products are loss-making?", "How much did I spend on shipping?"];
   suggestions.innerHTML = chips.map(q => `<button class="suggestion-chip">${q}</button>`).join("");
   suggestions.querySelectorAll("button").forEach(b => b.onclick = () => {
     input.value = b.textContent; ask();

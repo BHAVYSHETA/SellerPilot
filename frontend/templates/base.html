@@ -28,8 +28,8 @@
       <div class="demo-account">
         <div class="demo-avatar">SP</div>
         <div>
-          <div style="font-weight:600;color:#fff">{{ "Premium" if session.get("plan") in ["premium_monthly","premium_yearly"] else "Free Demo" }}</div>
-          <div style="font-size:11.5px;color:#9aa4c4">demo@example.com</div>
+          <div style="font-weight:600;color:#fff">{{ "7-Day Premium Trial" if session.get("plan") == "trial" else ("Premium" if session.get("plan") in ["premium_monthly","premium_yearly"] else "Free Demo") }}</div>
+          <div style="font-size:11.5px;color:#9aa4c4">{{ session.get("user_email", "demo@example.com") }}</div>
         </div>
       </div>
       <button class="btn btn-ghost btn-block" style="color:#b9c2dd" onclick="logout()">↩ Logout</button>

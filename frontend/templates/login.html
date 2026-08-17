@@ -10,7 +10,7 @@
 <body>
 <div class="auth-wrap">
   <div class="auth-card">
-    <div class="brand" style="margin-bottom:22px"><img class="brand-logo" src="{{ url_for('static', filename='images/sellerpilot-logo.png') }}" alt="SellerPilot logo"> <span>SellerPilot</span></div>
+    <div class="brand" style="margin-bottom:22px"><img class="brand-logo" src="{{ url_for('static', filename='images/sellerpilot-logo.png') }}" alt="SellerPilot logo"></div>
     <h1 id="formTitle">Welcome back</h1>
     <p class="hint" id="formHint">Log in to your seller dashboard.</p>
 
@@ -25,8 +25,13 @@
         <label>Password</label>
         <input type="password" id="password" value="{{ demo_password }}" required>
       </div>
-      <button type="submit" class="btn btn-primary btn-block">Log in</button>
+      <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Log in</button>
     </form>
+
+    <div style="text-align:center;margin:14px 0;color:#7d86a3;font-size:13px">
+      <span id="toggleText">New to SellerPilot?</span>
+      <button type="button" id="toggleMode" style="border:0;background:none;color:#c9962e;font-weight:700;cursor:pointer">Start 7-day free trial</button>
+    </div>
 
     <div class="auth-divider">or</div>
     <button class="btn btn-accent btn-block" id="oneClickDemo">⚡ One-Click Demo Login</button>
@@ -34,23 +39,46 @@
     <div class="demo-box">
       <strong>Demo credentials</strong><br>
       Email: <code>{{ demo_email }}</code><br>
-      Password: <code>{{ demo_password }}</code>
+      Password: <code>{{ demo_password }}</code><br>
+      <span style="font-size:12px;color:#71809e">Demo account includes a 7-day Premium trial.</span>
     </div>
   </div>
 </div>
 
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 <script>
+let signupMode = false;
+const title = document.getElementById('formTitle');
+const hint = document.getElementById('formHint');
+const submitBtn = document.getElementById('submitBtn');
+const toggleText = document.getElementById('toggleText');
+const toggleMode = document.getElementById('toggleMode');
+const err = document.getElementById('authError');
+
+toggleMode.addEventListener('click', () => {
+  signupMode = !signupMode;
+  title.textContent = signupMode ? 'Start your free trial' : 'Welcome back';
+  hint.textContent = signupMode ? 'Create your account and get 7 days of Premium free.' : 'Log in to your seller dashboard.';
+  submitBtn.textContent = signupMode ? 'Create account' : 'Log in';
+  toggleText.textContent = signupMode ? 'Already have an account?' : 'New to SellerPilot?';
+  toggleMode.textContent = signupMode ? 'Log in' : 'Start 7-day free trial';
+  if (signupMode) {
+    document.getElementById('email').value = '';
+    document.getElementById('password').value = '';
+  }
+  err.style.display = 'none';
+});
+
 document.getElementById('authForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
-  const res = await api('/api/login', { method: 'POST', body: JSON.stringify({ email, password }) });
-  const err = document.getElementById('authError');
+  const endpoint = signupMode ? '/api/signup' : '/api/login';
+  const res = await api(endpoint, { method: 'POST', body: JSON.stringify({ email, password }) });
   if (res.ok) {
     window.location.href = res.redirect;
   } else {
-    err.textContent = res.error || 'Login failed.';
+    err.textContent = res.error || 'Request failed.';
     err.style.display = 'block';
   }
 });
